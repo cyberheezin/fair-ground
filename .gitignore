@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/apt_data_geo*.csv
+data/data_imputed.csv
+data/result_by_type.csv
+data/result_type_based_grade.csv
+data/jeonse_cache.csv
+data/geocode_cache.json
+data/figures/
