@@ -289,74 +289,9 @@ type_ratio = df.groupby('apt_type_name').agg(
 print(type_ratio)
 
 # ─────────────────────────────────────────
-# STEP 9. 적정 공시가격 역산
-# 적정 공시가격 = SLM 예측 실거래가 × 가격구간별 현실화율
-# 근거: 국토교통부(2026) 공동주택가격 조사·산정 업무요령
+# STEP 9. 시각화
 # ─────────────────────────────────────────
-print("\n[STEP 9] 적정 공시가격 역산...")
-
-def get_tier_ratio(notice_man):
-    if notice_man < 30000:   return 0.600
-    elif notice_man < 60000: return 0.594
-    elif notice_man < 90000: return 0.584
-    else:                    return 0.595
-
-df['tier_ratio']     = df['notice_man'].apply(get_tier_ratio)
-df['fair_price_man'] = df['slm_pred'] * df['tier_ratio']
-df['fair_price']     = df['fair_price_man'] * 10000
-
-print(f"  3억미만(60.0%) / 3~6억(59.4%) / 6~9억(58.4%) / 9억초과(59.5%)")
-print(f"  적정 공시가격 평균: {df['fair_price_man'].mean():,.0f}만원")
-
-# ─────────────────────────────────────────
-# STEP 10. IAAO 기준 형평성 등급
-# ─────────────────────────────────────────
-print("\n[STEP 10] IAAO 기준 형평성 등급 산출...")
-
-df['equity_ratio'] = df['notice_man'] / df['fair_price_man']
-
-def assign_grade(r):
-    if r > 1.25:    return '심각과대'
-    elif r > 1.10:  return '과대'
-    elif r >= 0.90: return '적정'
-    elif r >= 0.75: return '과소'
-    else:           return '심각과소'
-
-df['equity_grade'] = df['equity_ratio'].apply(assign_grade)
-
-grade_order = ['심각과대', '과대', '적정', '과소', '심각과소']
-print(f"  형평성 비율 평균: {df['equity_ratio'].mean():.3f}")
-print(f"  형평성 비율 표준편차: {df['equity_ratio'].std():.3f}")
-for g in grade_order:
-    cnt = (df['equity_grade'] == g).sum()
-    print(f"    {g:6s}: {cnt:>6,}건 ({cnt/len(df)*100:.1f}%)")
-
-print("\n  동별 형평성:")
-print(df.groupby('bj_dong_name').agg(
-    equity_mean=('equity_ratio','mean'),
-    equity_med=('equity_ratio','median'),
-    count=('equity_ratio','count')).round(3))
-
-print("\n  유형별 형평성:")
-print(df.groupby('apt_type_name').agg(
-    equity_mean=('equity_ratio','mean'),
-    equity_med=('equity_ratio','median'),
-    count=('equity_ratio','count')).round(3))
-
-# 전세대출 126% 초과 (전세가 역산 세대만)
-df['over_126'] = None
-jeonse_mask = df['price_source'] == '전세가 역산'
-df.loc[jeonse_mask, 'over_126'] = (
-    df.loc[jeonse_mask, 'jeonse_price'] >
-    df.loc[jeonse_mask, 'notice_man'] * 1.26
-)
-print(f"\n  전세대출 불가(126% 초과): {(df['over_126']==True).sum():,}건")
-print(f"  전세대출 가능(126% 이하):  {(df['over_126']==False).sum():,}건")
-
-# ─────────────────────────────────────────
-# STEP 11. 시각화
-# ─────────────────────────────────────────
-print("\n[STEP 11] 시각화 생성...")
+print("\n[STEP 9] 시각화 생성...")
 
 # 9-1. OLS vs SLM 산점도
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
@@ -489,8 +424,6 @@ save_cols = [
     'ols_pred', 'slm_pred',
     'residual', 'residual_pct',
     'actual_ratio', 'calc_ratio', 'real_ratio',
-    'tier_ratio', 'fair_price_man', 'fair_price',
-    'equity_ratio', 'equity_grade', 'over_126',
 ]
 save_cols = [c for c in save_cols if c in df.columns]
 df[save_cols].to_csv('data/result_full.csv', index=False, encoding='utf-8-sig')
